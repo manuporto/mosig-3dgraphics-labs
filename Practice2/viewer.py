@@ -9,6 +9,8 @@ import os                           # os function, i.e. checking file status
 import OpenGL.GL as GL              # standard Python OpenGL wrapper
 import glfw                         # lean window system wrapper for OpenGL
 import numpy as np                  # all matrix manipulations & OpenGL args
+import pyassimp                     # 3D ressource loader
+import pyassimp.errors              # assimp error management + exceptions
 
 # Own code
 from transform import translate, rotate, scale, vec, perspective, lookat
@@ -129,6 +131,15 @@ class VertexArray:
         GL.glDeleteVertexArrays(1, [self.glid])
         GL.glDeleteBuffers(len(self.buffers), self.buffers)
 
+class ColorMesh:
+
+    def __init__(self, attributes, index=None):
+        self.vertex_array = VertexArray(attributes, index)
+
+    def draw(self, projection, view, model, color_shader):
+       GL.glUseProgram(color_shader.glid)
+       self.vertex_array.execute(GL.GL_TRIANGLES) 
+    
 class SimpleTriangle:
     """Hello triangle object"""
 
@@ -159,42 +170,16 @@ class Pyramid:
     def __init__(self):
 
         # triangle position and color buffers
-        self.position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
-        self.index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
-        self.color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
+        position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
+        index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
+        color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
 
-        #self.vertex_array = VertexArray([position, color], index)
-        self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
-        GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.buffers = GL.glGenBuffers(3)  # create buffer for position attrib
-
-        # (position) bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[0])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, self.position, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 0, None)
-
-        # (color) bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(1)      # assign to layout = 1 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[1])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, self.color, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 0, None)
-
-        # (index)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.buffers[-1])                  # make it active to receive
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, self.index, GL.GL_STATIC_DRAW)     # our index array here
-        
-        # cleanup and unbind so no accidental subsequent state update
-        GL.glBindVertexArray(0)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+        self.vertex_array = VertexArray([position, color], index)
 
     def draw(self, projection, view, model, color_shader, color):
         GL.glUseProgram(color_shader.glid)
 
-        # draw triangle as GL_TRIANGLE vertex array, draw array call
-        GL.glBindVertexArray(self.glid)
-        GL.glDrawElements(GL.GL_TRIANGLES, self.index.size, GL.GL_UNSIGNED_INT, None)  # 9 indexed verts = 3 triangles
-        GL.glBindVertexArray(0)
+        self.vertex_array.execute(GL.GL_TRIANGLES)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -205,10 +190,6 @@ class Pyramid:
         mvp = projection @ view @ model
         matrix_location = GL.glGetUniformLocation(color_shader.glid, 'matrix')
         GL.glUniformMatrix4fv(matrix_location, 1, True, mvp)
-
-    def __del__(self):
-        GL.glDeleteVertexArrays(1, [self.glid])
-        GL.glDeleteBuffers(1, self.buffers)
 
 class Pyramid2:
     """Pyramid object"""
@@ -216,42 +197,17 @@ class Pyramid2:
     def __init__(self):
 
         # triangle position and color buffers
-        self.position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
-        self.position += (2, 0, 0)
-        self.index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
-        self.color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
+        position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
+        position += (2, 0, 0)
+        index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
+        color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
 
-        self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
-        GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.buffers = GL.glGenBuffers(3)  # create buffer for position attrib
-
-        # (position) bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[0])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, self.position, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 0, None)
-
-        # (color) bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(1)      # assign to layout = 1 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[1])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, self.color, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 0, None)
-
-        # (index)
-        GL.glBindBuffer(GL.GL_ELEMENT_ARRAY_BUFFER, self.buffers[-1])                  # make it active to receive
-        GL.glBufferData(GL.GL_ELEMENT_ARRAY_BUFFER, self.index, GL.GL_STATIC_DRAW)     # our index array here
-        
-        # cleanup and unbind so no accidental subsequent state update
-        GL.glBindVertexArray(0)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0)
+        self.vertex_array = VertexArray([position, color], index)
 
     def draw(self, projection, view, model, color_shader, color):
         GL.glUseProgram(color_shader.glid)
 
-        # draw triangle as GL_TRIANGLE vertex array, draw array call
-        GL.glBindVertexArray(self.glid)
-        GL.glDrawElements(GL.GL_TRIANGLES, self.index.size, GL.GL_UNSIGNED_INT, None)  # 9 indexed verts = 3 triangles
-        GL.glBindVertexArray(0)
+        self.vertex_array.execute(GL.GL_TRIANGLES)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -262,10 +218,6 @@ class Pyramid2:
         mvp = projection @ view @ model
         matrix_location = GL.glGetUniformLocation(color_shader.glid, 'matrix')
         GL.glUniformMatrix4fv(matrix_location, 1, True, mvp)
-
-    def __del__(self):
-        GL.glDeleteVertexArrays(1, [self.glid])
-        GL.glDeleteBuffers(1, self.buffers)
 
 # ------------  Viewer class & window management ------------------------------
 class Viewer:
@@ -335,6 +287,22 @@ class Viewer:
             if key == glfw.KEY_B:
                 self.color = (0, 0, 1)
 
+# -------------- 3D ressource loader -----------------------------------------
+def load(file):
+    """ load resources from file using pyassimp, return list of ColorMesh """
+    try:
+        option = pyassimp.postprocess.aiProcessPreset_TargetRealtime_MaxQuality
+        scene = pyassimp.load(file, option)
+    except pyassimp.errors.AssimpError:
+        print('ERROR: pyassimp unable to load', file)
+        return []     # error reading => return empty list
+
+    meshes = [ColorMesh([m.vertices, m.normals], m.faces) for m in scene.meshes]
+    size = sum((mesh.faces.shape[0] for mesh in scene.meshes))
+    print('Loaded %s\t(%d meshes, %d faces)' % (file, len(scene.meshes), size))
+
+    pyassimp.release(scene)
+    return meshes
 
 # -------------- main program and scene setup --------------------------------
 def main():
@@ -342,10 +310,10 @@ def main():
     viewer = Viewer()
 
     # place instances of our basic objects
-    viewer.add(SimpleTriangle())
+    #viewer.add(SimpleTriangle())
     #viewer.add(Pyramid())
     #viewer.add(Pyramid2())
-
+    viewer.add(load("./resources/suzanne.obj"))
     # start rendering loop
     viewer.run()
 
