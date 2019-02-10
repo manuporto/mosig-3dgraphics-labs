@@ -134,43 +134,14 @@ class SimpleTriangle:
 
     def __init__(self):
         # triangle position and color buffers
-        position = np.array(((0, .5, 1), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
+        position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
         color = np.array(((1,0,0), (0,1,0), (0,0,1)), 'f')
 
         self.vertex_array = VertexArray([position, color])
 
-        """ self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
-        GL.glBindVertexArray(self.glid)      # activate to receive state below
-        self.buffers = GL.glGenBuffers(2)  # create buffer for position attrib
-
-        # bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(0)      # assign to layout = 0 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[0])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, position, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(0, 3, GL.GL_FLOAT, False, 0, None)
-
-        # bind the vbo, upload position data to GPU, declare its size and type
-        GL.glEnableVertexAttribArray(1)      # assign to layout = 1 attribute
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, self.buffers[1])
-        GL.glBufferData(GL.GL_ARRAY_BUFFER, color, GL.GL_STATIC_DRAW)
-        GL.glVertexAttribPointer(1, 3, GL.GL_FLOAT, False, 0, None)
-
-        # cleanup and unbind so no accidental subsequent state update
-        GL.glBindVertexArray(0)
-        GL.glBindBuffer(GL.GL_ARRAY_BUFFER, 0) """
-
     def draw(self, projection, view, model, color_shader, color):
-        self.vertex_array.draw_command(GL.GL_TRIANGLES)
-        #GL.glUseProgram(color_shader.glid)
-
-        # draw triangle as GL_TRIANGLE vertex array, draw array call
-        """GL.glBindVertexArray(self.glid)
-        GL.glDrawArrays(GL.GL_TRIANGLES, 0, 3)
-        GL.glBindVertexArray(0) """
-
-        # color as shader uniform (deactivated, not receiving this info in VS)
-        """my_color_location = GL.glGetUniformLocation(color_shader.glid, 'color')
-        GL.glUniform3fv(my_color_location, 1, color) """
+        GL.glUseProgram(color_shader.glid)
+        self.vertex_array.execute(GL.GL_TRIANGLES)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -182,11 +153,6 @@ class SimpleTriangle:
         matrix_location = GL.glGetUniformLocation(color_shader.glid, 'matrix')
         GL.glUniformMatrix4fv(matrix_location, 1, True, mvp)
 
-    def __del__(self):
-        return
-        """   GL.glDeleteVertexArrays(1, [self.glid])
-        GL.glDeleteBuffers(1, self.buffers) """
-
 class Pyramid:
     """Pyramid object"""
 
@@ -197,6 +163,7 @@ class Pyramid:
         self.index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
         self.color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
 
+        #self.vertex_array = VertexArray([position, color], index)
         self.glid = GL.glGenVertexArrays(1)  # create OpenGL vertex array id
         GL.glBindVertexArray(self.glid)      # activate to receive state below
         self.buffers = GL.glGenBuffers(3)  # create buffer for position attrib
