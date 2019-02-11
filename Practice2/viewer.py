@@ -169,7 +169,7 @@ class Pyramid(ColorMesh):
 
         # triangle position and color buffers
         position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
-        index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
+        index = np.array((0, 3, 4, 0, 1, 4, 2, 1, 4, 3, 2, 4), np.uint32)
         color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
         super().__init__([position, color], index)
 
@@ -194,7 +194,7 @@ class Pyramid2(ColorMesh):
         # triangle position and color buffers
         position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
         position += (2, 0, 0)
-        index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
+        index = np.array((0, 3, 4, 0, 1, 4, 2, 1, 4, 3, 2, 4), np.uint32)
         color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
         super().__init__([position, color], index)
 
