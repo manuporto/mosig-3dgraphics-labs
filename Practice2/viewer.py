@@ -140,19 +140,17 @@ class ColorMesh:
        GL.glUseProgram(color_shader.glid)
        self.vertex_array.execute(GL.GL_TRIANGLES) 
     
-class SimpleTriangle:
+class SimpleTriangle(ColorMesh):
     """Hello triangle object"""
 
     def __init__(self):
         # triangle position and color buffers
         position = np.array(((0, .5, 0), (.5, -.5, 0), (-.5, -.5, 0)), 'f')
         color = np.array(((1,0,0), (0,1,0), (0,0,1)), 'f')
-
-        self.vertex_array = VertexArray([position, color])
+        super().__init__([position, color])
 
     def draw(self, projection, view, model, color_shader, color):
-        GL.glUseProgram(color_shader.glid)
-        self.vertex_array.execute(GL.GL_TRIANGLES)
+        super().draw(projection, view, model, color_shader)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -164,7 +162,7 @@ class SimpleTriangle:
         matrix_location = GL.glGetUniformLocation(color_shader.glid, 'matrix')
         GL.glUniformMatrix4fv(matrix_location, 1, True, mvp)
 
-class Pyramid:
+class Pyramid(ColorMesh):
     """Pyramid object"""
 
     def __init__(self):
@@ -173,13 +171,10 @@ class Pyramid:
         position = np.array(((-.5, 0, -.5), (.5, 0, -.5), (.5, 0, .5), (-.5, 0, .5), (0, 1, 0)), np.float32)
         index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
         color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
-
-        self.vertex_array = VertexArray([position, color], index)
+        super().__init__([position, color], index)
 
     def draw(self, projection, view, model, color_shader, color):
-        GL.glUseProgram(color_shader.glid)
-
-        self.vertex_array.execute(GL.GL_TRIANGLES)
+        super().draw(projection, view, model, color_shader)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -191,7 +186,7 @@ class Pyramid:
         matrix_location = GL.glGetUniformLocation(color_shader.glid, 'matrix')
         GL.glUniformMatrix4fv(matrix_location, 1, True, mvp)
 
-class Pyramid2:
+class Pyramid2(ColorMesh):
     """Pyramid object"""
 
     def __init__(self):
@@ -201,13 +196,10 @@ class Pyramid2:
         position += (2, 0, 0)
         index = np.array((0, 4, 3, 0, 4, 1, 2, 4, 1, 3, 4, 2), np.uint32)
         color = np.array(((1,0,0), (0,1,0), (0,0,1), (1,1,0), (0,1,1)), 'f')
-
-        self.vertex_array = VertexArray([position, color], index)
+        super().__init__([position, color], index)
 
     def draw(self, projection, view, model, color_shader, color):
-        GL.glUseProgram(color_shader.glid)
-
-        self.vertex_array.execute(GL.GL_TRIANGLES)
+        super().draw(projection, view, model, color_shader)
 
         # model, projection and view transform
         model =  np.identity(4) # translate(0.4, 0.7, 0) @ rotate(vec(1, 0, 0), 25) @ scale(0.7)
@@ -311,9 +303,11 @@ def main():
 
     # place instances of our basic objects
     #viewer.add(SimpleTriangle())
-    #viewer.add(Pyramid())
-    #viewer.add(Pyramid2())
-    viewer.add(load("./resources/suzanne.obj"))
+    viewer.add(Pyramid())
+    viewer.add(Pyramid2())
+    #for cmesh in load("./resources/suzanne.obj"):
+    #    print("Adding mesh")
+    #    viewer.add(cmesh)
     # start rendering loop
     viewer.run()
 
