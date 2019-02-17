@@ -153,6 +153,7 @@ class Node:
         # merge named parameters given at initialization with those given here
         param = dict(param, **self.param)
         # model = ...   # what to insert here for hierarchical update?
+        model = model @ self.transform
         for child in self.children:
             # model = model @ self.transform
             child.draw(projection, view, model, **param)
@@ -194,7 +195,7 @@ class Cylinder(Node):
     """ Very simple cylinder based on practical 2 load function """
     def __init__(self):
         super().__init__()
-        self.add(*load('cylinder.obj'))  # just load the cylinder from file
+        self.add(*load('./resources/cylinder.obj'))  # just load the cylinder from file
 
 
 # -------------- 3D ressource loader -----------------------------------------
@@ -320,8 +321,38 @@ def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
 
+    cylinder = Cylinder()
+
+    # base
+    base_shape = Node(transform=scale(1, 0.25, 1))
+    base_shape.add(cylinder)
+
+    # arm
+    arm_shape = Node(transform=(translate(0, 1, 0) @ scale(0.5, 1, 0.5)))
+    arm_shape.add(cylinder)
+
+    # forearm
+    forearm_shape = Node(transform=(translate(0, 1, 0) @ scale(0.25, 1, 0.25)))
+    forearm_shape.add(cylinder)
+
+    # ---- construct our robot arm hierarchy ---------------------------
+    theta = 45.0        # base horizontal rotation angle
+    phi1 = 45.0         # arm angle
+    phi2 = 20.0         # forearm angle
+    
+    transform_forearm = Node(transform=translate(0, 1, 0) @ rotate((1, 1, 0), phi2))
+    transform_forearm.add(forearm_shape)
+
+    transform_arm = Node(transform=rotate((1, 1, 0), phi1))
+    transform_arm.add(arm_shape, transform_forearm)
+
+    transform_base = Node(transform=rotate((1, 1, 0), theta))
+    transform_base.add(base_shape, transform_arm)
+
+    viewer.add(transform_base)
+
     # place instances of our basic objects
-    viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file)])
+    # viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file)])
     if len(sys.argv) < 2:
         print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
               ' format supported by pyassimp.' % (sys.argv[0],))
