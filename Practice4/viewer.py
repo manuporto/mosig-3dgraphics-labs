@@ -115,24 +115,37 @@ class VertexArray:
 # ------------  simple color fragment shader demonstrated in Practical 1 ------
 COLOR_VERT = """#version 330 core
 layout(location = 0) in vec3 position;
-layout(location = 1) in vec3 color;
+layout(location = 1) in vec3 normal;
 
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
-out vec3 fragColor;
+out vec3 fragNormal;
+//out vec3 fragView;
 
 void main() {
     gl_Position = projection * view * model * vec4(position, 1);
-    fragColor = color;
+    //fragNormal = normal; // fixed light
+    // light 'rotates' with camera movement
+    fragNormal = transpose(inverse(mat3(view * model))) * normal;
+    //fragView = normalize((view * model * vec4(position, 1)).xyz);
 }"""
 
 
 COLOR_FRAG = """#version 330 core
-in vec3 fragColor;
+in vec3 fragNormal;
+//in vec3 fragView;
+vec3 l;
+vec3 n;
+vec3 lColor;
+float diff;
 out vec4 outColor;
 void main() {
-    outColor = vec4(fragColor, 1);
+    l = normalize(vec3(0, 0, 1));
+    n = normalize(fragNormal);
+    diff = max(dot(n, l), 0);
+    lColor = diff * vec3(0, 1, 0);
+    outColor = vec4(lColor, 1);
 }"""
 
 
@@ -197,6 +210,11 @@ class Cylinder(Node):
         super().__init__()
         self.add(*load('./resources/cylinder.obj'))  # just load the cylinder from file
 
+class PhongMesh(Node):
+    "Phong Mesh object"
+    def __init__(self):
+        super().__init__()
+        self.add(*load('./resources/cylinder.obj'))
 
 # -------------- 3D ressource loader -----------------------------------------
 def load(file):
@@ -281,7 +299,7 @@ class Viewer:
 
         # cyclic iterator to easily toggle polygon rendering modes
         self.fill_modes = cycle([GL.GL_LINE, GL.GL_POINT, GL.GL_FILL])
-        
+       
     def run(self):
         """ Main render loop for this OpenGL window """
         while not glfw.window_should_close(self.win):
@@ -291,7 +309,7 @@ class Viewer:
             winsize = glfw.get_window_size(self.win)
             view = self.trackball.view_matrix()
             projection = self.trackball.projection_matrix(winsize)
-            
+           
             # draw our scene objects
             for drawable in self.drawables:
                 drawable.draw(projection, view, identity(),
@@ -321,38 +339,10 @@ def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
 
-    cylinder = Cylinder()
-
-    # base
-    base_shape = Node(transform=scale(1, 0.25, 1))
-    base_shape.add(cylinder)
-
-    # arm
-    arm_shape = Node(transform=(translate(0, 1, 0) @ scale(0.5, 1, 0.5)))
-    arm_shape.add(cylinder)
-
-    # forearm
-    forearm_shape = Node(transform=(translate(0, 1, 0) @ scale(0.25, 1, 0.25)))
-    forearm_shape.add(cylinder)
-
-    # ---- construct our robot arm hierarchy ---------------------------
-    theta = 0        # base horizontal rotation angle
-    phi1 = 0         # arm angle
-    phi2 = 45         # forearm angle
-    
-    transform_forearm = Node(transform=translate(0, 2, 0) @ rotate((1, 0, 0), phi2))
-    transform_forearm.add(forearm_shape)
-
-    transform_arm = Node(transform=rotate((1, 1, 0), phi1))
-    transform_arm.add(arm_shape, transform_forearm)
-
-    transform_base = Node(transform=rotate((1, 1, 0), theta))
-    transform_base.add(base_shape, transform_arm)
-
-    viewer.add(transform_base)
-
+    phong_mesh = PhongMesh()
+    viewer.add(phong_mesh)
     # place instances of our basic objects
-    # viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file)])
+    #viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file)])
     if len(sys.argv) < 2:
         print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
               ' format supported by pyassimp.' % (sys.argv[0],))
