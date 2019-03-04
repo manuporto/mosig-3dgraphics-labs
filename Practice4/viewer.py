@@ -121,31 +121,46 @@ uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 out vec3 fragNormal;
-//out vec3 fragView;
+out vec3 fragView;
 
 void main() {
     gl_Position = projection * view * model * vec4(position, 1);
     //fragNormal = normal; // fixed light
     // light 'rotates' with camera movement
     fragNormal = transpose(inverse(mat3(view * model))) * normal;
-    //fragView = normalize((view * model * vec4(position, 1)).xyz);
+    fragView = normalize((view * model * vec4(position, 1)).xyz);
 }"""
 
 
 COLOR_FRAG = """#version 330 core
 in vec3 fragNormal;
-//in vec3 fragView;
+in vec3 fragView;
+vec3 v;
 vec3 l;
 vec3 n;
-vec3 lColor;
+vec3 r;
+vec3 ka;
+vec3 kd;
+vec3 ks;
+vec3 color;
+float s;
 float diff;
+float spec;
 out vec4 outColor;
 void main() {
+    v = normalize(fragView);
     l = normalize(vec3(0, 0, 1));
     n = normalize(fragNormal);
+    r = reflect(l, n);
+    ka = vec3(0, 0, 1);
+    kd = vec3(1, 0.5, 0.5);
+    ks = vec3(1, 0, 0);
+    s = 50; // size of the highlights
     diff = max(dot(n, l), 0);
-    lColor = diff * vec3(0, 1, 0);
-    outColor = vec4(lColor, 1);
+    spec = pow(max(dot(r, v), 0), s); // shape of the specular lobe
+    //color = diff * vec3(0, 1, 0); // lambertian model
+    color = ka + kd * diff + ks * spec;
+    outColor = vec4(color, 1);
 }"""
 
 
