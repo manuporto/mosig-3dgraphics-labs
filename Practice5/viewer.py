@@ -334,8 +334,31 @@ class TexturedPlane:
 
 class TexturedMesh:
 
-    def __init__(self):
-        return
+    def __init__(self, file, attributes, index=None):
+        self.shader = Shader(TEXTURE_VERT, TEXTURE_FRAG)
+        self.texture = Texture(file)
+        self.mesh = ColorMesh(attributes, index)
+
+    def draw(self, projection, view, model, color_shader=None, win=None, **param):
+        GL.glUseProgram(self.shader.glid)
+
+        # projection geometry
+        loc = GL.glGetUniformLocation(self.shader.glid, 'modelviewprojection')
+        GL.glUniformMatrix4fv(loc, 1, True, projection @ view @ model)
+
+        # texture access setups
+        loc = GL.glGetUniformLocation(self.shader.glid, 'diffuseMap')
+        GL.glActiveTexture(GL.GL_TEXTURE0)
+        GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture.glid)
+        GL.glUniform1i(loc, 0)
+
+        # !!!!! Here I pass the texture shader, but I am not sure if it is the correct way to do it.
+        self.mesh.draw(projection, view, model, self.shader, **param)
+
+        # leave clean state for easier debugging
+        GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
+        GL.glUseProgram(0)
+        
         
 # -------------- 3D ressource loader -----------------------------------------
 def load(file):
@@ -502,16 +525,15 @@ def main():
     """ create a window, add scene objects, then run rendering loop """
     viewer = Viewer()
 
-    phong_mesh = PhongMesh()
-    viewer.add(phong_mesh)
-    txt = TexturedPlane('resources/grass.png')
-    viewer.add(txt)
-    # place instances of our basic objects
-    #viewer.add(*[mesh for file in sys.argv[1:] for mesh in load(file)])
-    #if len(sys.argv) < 2:
-    #    print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
-    #          ' format supported by pyassimp.' % (sys.argv[0],))
 
+    #txt = TexturedPlane('resources/grass.png')
+    #viewer.add(txt)
+    # place instances of our basic objects
+    if len(sys.argv) < 2:
+        print('Usage:\n\t%s [3dfile]*\n\n3dfile\t\t the filename of a model in'
+              ' format supported by pyassimp.' % (sys.argv[0],))
+    
+    viewer.add(*[mesh for file in sys.argv[1:] for mesh in load_textured(file)])
     # start rendering loop
     viewer.run()
 
