@@ -213,15 +213,15 @@ class KeyFrames:
 
         # 1. ensure time is within bounds else return boundary keyframe
         if time <= self.times[0]:
-            return self.times[0].values() # i need to return the values not the time
+            return self.values[0] # i need to return the values not the time
         if time >= self.times[-1]:
-            return self.times[-1].values()
+            return self.values[-1]
         # 2. search for closest index entry in self.times, using bisect_left function
         index_entry = bisect_left(self.times, time)
         # 3. using the retrieved index, interpolate between the two neighboring values
         # in self.values, using the initially stored self.interpolate function
         fraction = (time - self.times[index_entry - 1]) / (self.times[index_entry] - self.times[index_entry-1])
-        return self.interpolate(self.times[index_entry - 1].values(), self.times[index_entry].values(), fraction)
+        return self.interpolate(self.values[index_entry - 1], self.values[index_entry], fraction)
 
 class TransformKeyFrames:
     """ KeyFrames-like object dedicated to 3D transforms """
