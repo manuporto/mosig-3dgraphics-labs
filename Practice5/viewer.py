@@ -265,10 +265,11 @@ class PhongMesh(Node):
 TEXTURE_VERT = """#version 330 core
 uniform mat4 modelviewprojection;
 layout(location = 0) in vec3 position;
+layout(location = 1) in vec2 tex_coords;
 out vec2 fragTexCoord;
 void main() {
     gl_Position = modelviewprojection * vec4(position, 1);
-    fragTexCoord = position.xy;
+    fragTexCoord = tex_coords;
 }"""
 
 TEXTURE_FRAG = """#version 330 core
@@ -278,7 +279,6 @@ out vec4 outColor;
 void main() {
     outColor = texture(diffuseMap, fragTexCoord);
 }"""
-
 
 class TexturedPlane:
     """ Simple first textured object """
@@ -335,11 +335,29 @@ class TexturedPlane:
 class TexturedMesh:
 
     def __init__(self, file, attributes, index=None):
+        # interactive toggles
+        self.wrap = cycle([GL.GL_REPEAT, GL.GL_MIRRORED_REPEAT,
+                           GL.GL_CLAMP_TO_BORDER, GL.GL_CLAMP_TO_EDGE])
+        self.filter = cycle([(GL.GL_NEAREST, GL.GL_NEAREST),
+                             (GL.GL_LINEAR, GL.GL_LINEAR),
+                             (GL.GL_LINEAR, GL.GL_LINEAR_MIPMAP_LINEAR)])
+        self.wrap_mode, self.filter_mode = next(self.wrap), next(self.filter)
+        self.file = file
+
         self.shader = Shader(TEXTURE_VERT, TEXTURE_FRAG)
-        self.texture = Texture(file)
-        self.mesh = ColorMesh(attributes, index)
+        self.texture = Texture(file, self.wrap_mode, *self.filter_mode)
+        self.vertex_array = VertexArray(attributes, index)
 
     def draw(self, projection, view, model, color_shader=None, win=None, **param):
+        # some interactive elements
+        if glfw.get_key(win, glfw.KEY_U) == glfw.PRESS:
+            self.wrap_mode = next(self.wrap)
+            self.texture = Texture(self.file, self.wrap_mode, *self.filter_mode)
+
+        if glfw.get_key(win, glfw.KEY_J) == glfw.PRESS:
+            self.filter_mode = next(self.filter)
+            self.texture = Texture(self.file, self.wrap_mode, *self.filter_mode)
+
         GL.glUseProgram(self.shader.glid)
 
         # projection geometry
@@ -351,14 +369,11 @@ class TexturedMesh:
         GL.glActiveTexture(GL.GL_TEXTURE0)
         GL.glBindTexture(GL.GL_TEXTURE_2D, self.texture.glid)
         GL.glUniform1i(loc, 0)
-
-        # !!!!! Here I pass the texture shader, but I am not sure if it is the correct way to do it.
-        self.mesh.draw(projection, view, model, self.shader, **param)
+        self.vertex_array.execute(GL.GL_TRIANGLES)
 
         # leave clean state for easier debugging
         GL.glBindTexture(GL.GL_TEXTURE_2D, 0)
         GL.glUseProgram(0)
-        
         
 # -------------- 3D ressource loader -----------------------------------------
 def load(file):
